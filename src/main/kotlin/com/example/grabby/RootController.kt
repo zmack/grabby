@@ -12,9 +12,13 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.client.RestTemplate
+import reactor.core.publisher.Mono
 
 @RestController
-class RootController(val airportInfo: AirportInfo) {
+class RootController(
+    val airportInfo: AirportInfo,
+    val cheeseService: CheeseService
+    ) {
     val logger: Logger by lazy { LoggerFactory.getLogger(javaClass) }
 
     @GetMapping("/")
@@ -25,13 +29,36 @@ class RootController(val airportInfo: AirportInfo) {
         )
     }
 
+    @FlowPreview
     @GetMapping("/airports")
     fun list(@RequestParam(defaultValue = "10", name = "airports") airports: Int):
             ResponseEntity<List<TemperatureInfo?>> {
         logger.info("Param is $airports")
         val airportCodes = List(airports) { "SFO" }
-        val airportInfo = runBlocking { airportInfo.getForAirportsFlow(airportCodes) }
+        val airportInfo = runBlocking { airportInfo.getForAirportsWebClient(airportCodes) }
 
         return ResponseEntity.ok(airportInfo)
+    }
+
+    @GetMapping("/cizu")
+    fun getCizu(@RequestParam(defaultValue = "cheese", name = "flavor") flavor: String):
+            ResponseEntity<Cizis?> {
+        logger.info("Param is $flavor")
+        val cheeseInfo : Mono<Envelope<Cizis>?> = cheeseService.getCizu(flavor)
+        val envelope = cheeseInfo.block()
+        logger.info("Cheese -> $envelope")
+
+        return ResponseEntity.ok(envelope?.properties)
+    }
+
+    @GetMapping("/enveloped_cizu")
+    fun getEnvelopedCizu(@RequestParam(defaultValue = "cheese", name = "flavor") flavor: String):
+            ResponseEntity<Enveloped?> {
+        logger.info("Param is $flavor")
+        val cheeseInfo : Mono<Enveloped?> = cheeseService.getEnvelopedCizu(flavor)
+        val envelope = cheeseInfo.block()
+        logger.info("Cheese -> $envelope")
+
+        return ResponseEntity.ok(envelope)
     }
 }
